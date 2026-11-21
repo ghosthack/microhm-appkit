@@ -1,0 +1,34 @@
+name: CI
+
+# The Swift tests, the phone page's tests and an app build on every push to main and every
+# pull request, plus a check that the files copied from micro-harness-manager are unedited.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test on macos-15
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - name: Check the shared files
+        run: scripts/sync-shared.sh --check
+      - name: Run the Swift tests
+        run: swift test
+      - name: Test the phone page's script
+        run: scripts/page-tests.sh
+      - name: Test the phone page end to end
+        run: scripts/phone-e2e.sh
+      - name: Build the app
+        run: scripts/build-app.sh

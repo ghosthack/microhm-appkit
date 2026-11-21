@@ -18,7 +18,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/Microhm" "$BIN/microhm-mux" "$BIN/microhm-host" "$APP/Contents/MacOS/"
 for b in "$BIN"/*.bundle; do [ -e "$b" ] && cp -R "$b" "$APP/Contents/Resources/"; done
-cp ../packaging/icons/micro-harness-manager.icns "$APP/Contents/Resources/Microhm.icns"
+cp Shared/Microhm.icns "$APP/Contents/Resources/Microhm.icns"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

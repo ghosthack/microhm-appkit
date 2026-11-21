@@ -1,7 +1,7 @@
 # Swift port — conventions
 
-The native macOS port of micro-harness-manager. The Java sources in `../vt`, `../pty`,
-`../mux` and `../app` are the specification: port behaviour faithfully, including
+The native macOS port of [micro-harness-manager](https://github.com/ghosthack/micro-harness-manager).
+Its Java sources in `vt`, `pty`, `mux` and `app` are the specification: port behaviour faithfully, including
 comments that explain *why*. Don't redesign. Where Java uses a JVM-only trick (FFM,
 the `ControllingTerminal` re-exec, AOT caches, FlatLaf, Swing), use the native macOS
 equivalent.
@@ -35,7 +35,7 @@ equivalent.
   `MICROHM_HOME`). Default ports are 7402 (MCP) and 7403 (phone).
 - **Wire compatibility.** The mux protocol (frames, JSON field names, ops, errors) and the
   phone page's HTTP API must match the Java implementation byte for byte where it
-  matters, so the Java CLI (`../microhm-mux`) and the unmodified web page work against
+  matters, so the Java CLI (`microhm-mux`) and the unmodified web page work against
   the Swift servers.
 - **Tests.** XCTest, in `Tests/<Target>Tests`. Port the Java tests that pin behaviour
   (VT golden files are in `Tests/MicrohmVTTests/golden`, loaded via `Bundle.module`).

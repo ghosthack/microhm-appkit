@@ -1,7 +1,8 @@
 # Microhm for macOS (Swift)
 
-A native macOS port of micro-harness-manager: AppKit, Core Text and Swift, with no
-third-party packages. Everything in the main [README](../README.md) applies:
+A native macOS port of [micro-harness-manager](https://github.com/ghosthack/micro-harness-manager)
+(the Java app): AppKit, Core Text and Swift, with no third-party packages. Everything in
+its [README](https://github.com/ghosthack/micro-harness-manager#readme) applies:
 - the sidebar of agent and shell sessions with their states;
 - sessions that outlive the app in a background daemon;
 - the harness plugins;
@@ -17,6 +18,7 @@ The exceptions are listed under [Differences from the Java app](#differences-fro
 scripts/build-app.sh                 # dist/Microhm.app (release, ad-hoc signed)
 open dist/Microhm.app
 swift test                           # 803 tests
+scripts/page-tests.sh                # the phone page script's unit tests
 scripts/phone-e2e.sh                 # the phone page's Playwright suite against the Swift server
 ```
 
@@ -40,6 +42,19 @@ The bundle holds three executables in `Contents/MacOS`:
 The daemon speaks the same wire protocol (v1) as the Java one. The Java `microhm-mux` CLI
 drives a Swift daemon, and the other way round. A Unix socket path must stay under 104
 bytes, so keep `MICROHM_MUX_HOME` short.
+
+## Files shared with the Java app
+
+The phone page, its tests and the app icon belong to micro-harness-manager. This repo keeps
+copies, listed in [Shared/shared.txt](Shared/shared.txt) and taken from the commit in
+[Shared/shared.lock](Shared/shared.lock). Don't edit the copies. Change them in
+micro-harness-manager, then bring them here:
+
+```sh
+scripts/sync-shared.sh --latest      # copy from upstream main and update the lock
+scripts/sync-shared.sh <commit>      # or from a given commit
+scripts/sync-shared.sh --check       # what CI runs: fails if a copy was edited here
+```
 
 ## Layout
 

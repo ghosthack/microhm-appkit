@@ -1,0 +1,19 @@
+# Files that micro-harness-manager (the Java app) owns and this repo keeps copies of.
+# Each line: <path in micro-harness-manager>  <path here>. A path ending in / is a folder,
+# mirrored exactly (files missing upstream are removed here).
+# Don't edit the copies: change them in micro-harness-manager, then run
+# scripts/sync-shared.sh --latest (or with a commit). CI fails if a copy differs from
+# the commit in Shared/shared.lock.
+
+# The phone page, served unmodified by the Swift phone server
+app/src/main/resources/web/            Sources/MicrohmCore/Resources/web/
+# Its script's unit tests (scripts/page-tests.sh)
+app/src/test/web/                      Shared/page-tests/
+# Its end-to-end tests (scripts/phone-e2e.sh)
+app/src/test/e2e/phone.test.mjs        Shared/e2e/phone.test.mjs
+app/src/test/e2e/package.json          Shared/e2e/package.json
+app/src/test/e2e/package-lock.json     Shared/e2e/package-lock.json
+# The app icon
+packaging/icons/micro-harness-manager.icns  Shared/Microhm.icns
+# The license (the same for both apps)
+LICENSE                                LICENSE

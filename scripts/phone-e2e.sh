@@ -1,5 +1,5 @@
 #!/bin/sh
-# The phone page's end-to-end tests (app/src/test/e2e/phone.test.mjs, unmodified) against
+# The phone page's end-to-end tests (Shared/e2e/phone.test.mjs, from micro-harness-manager) against
 # the Swift servers. Builds microhm-host and microhm-mux, then runs the tests with a `java`
 # shim first on PATH that turns the test's two Java invocations into the Swift ones:
 #   java … io.github.ghosthack.microhm.app.phone.PhoneMain --port= --token= --registry= --mux-home=
@@ -7,14 +7,12 @@
 #   java … io.github.ghosthack.microhm.mux.Main shutdown --home DIR
 #       -> microhm-mux shutdown --home DIR
 # The tests start the page with a scratch home and daemon, so your own sessions are never
-# touched. Needs node 20+ and the e2e folder's node_modules (playwright-core).
+# touched. Needs node 20+; installs playwright-core into Shared/e2e/node_modules.
 # Extra args go to node --test (e.g. --test-name-pattern=close).
 # MHM_KEEP_WORK=1 keeps the scratch folder; MHM_CHROMIUM picks another Chromium;
 # MHM_WEB_DIR serves the page from a folder on disk (default: the bundled Resources/web).
 set -e
 cd "$(dirname "$0")/.."
-SWIFT=$(pwd)
-REPO=$(cd .. && pwd)
 SCRATCH=${MHM_SCRATCH_PATH:-.build-svc}
 swift build --scratch-path "$SCRATCH" --product microhm-mux >/dev/null
 swift build --scratch-path "$SCRATCH" --product microhm-host >/dev/null
@@ -55,7 +53,7 @@ chmod +x "$SHIM/java"
 export PATH="$SHIM:$PATH"
 # the test only checks that this is set; the shim ignores the jar
 export MHM_JAR="$BIN/microhm-host"
-cd "$REPO/app/src/test/e2e"
+cd Shared/e2e
 [ -d node_modules/playwright-core ] || npm ci --no-audit --no-fund
 [ -n "$MHM_CHROMIUM" ] || npx --no-install playwright-core install chromium-headless-shell >/dev/null
 node --test --test-concurrency=1 "$@" phone.test.mjs

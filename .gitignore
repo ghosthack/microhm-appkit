@@ -3,3 +3,6 @@
 dist/
 *.xcodeproj
 .swiftpm/
+
+# phone page end-to-end tests (scripts/phone-e2e.sh)
+Shared/e2e/node_modules/
