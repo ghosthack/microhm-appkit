@@ -4,6 +4,7 @@
 # bundles in Contents/Resources. Ad-hoc signed unless SIGN_IDENTITY is set.
 #   scripts/build-app.sh            release build
 #   CONFIG=debug scripts/build-app.sh
+#   VERSION=1.2.0 SIGN_IDENTITY="Developer ID Application: …" scripts/build-app.sh
 set -eu
 cd "$(dirname "$0")/.."
 CONFIG="${CONFIG:-release}"
@@ -42,5 +43,16 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-codesign --force --deep --sign "${SIGN_IDENTITY:--}" "$APP" >/dev/null
+# Inside out: the helper executables, then the bundle. With a real identity, the hardened
+# runtime and a secure timestamp, which notarization requires.
+if [ -n "${SIGN_IDENTITY:-}" ]; then
+  set -- --force --options runtime --timestamp --sign "$SIGN_IDENTITY"
+else
+  set -- --force --sign -
+fi
+for exe in microhm-mux microhm-host; do
+  codesign "$@" "$APP/Contents/MacOS/$exe" >/dev/null
+done
+codesign "$@" "$APP" >/dev/null
+codesign --verify --strict --deep "$APP"
 echo "$APP"

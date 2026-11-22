@@ -25,10 +25,23 @@ jobs:
       - name: Check the shared files
         run: scripts/sync-shared.sh --check
       - name: Run the Swift tests
-        run: swift test
+        shell: bash
+        run: swift test 2>&1 | tee swift-test.log
+      - name: Name the failing Swift tests
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "error: -\[|: error: |' failed \(" swift-test.log | grep -v "Test Suite" || true
+      - name: Keep the Swift test log
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: swift-test-log
+          path: swift-test.log
+          retention-days: 14
       - name: Test the phone page's script
         run: scripts/page-tests.sh
       - name: Test the phone page end to end
         run: scripts/phone-e2e.sh
-      - name: Build the app
-        run: scripts/build-app.sh
+      - name: Build the app and the DMG
+        run: scripts/package.sh 1.0.0
