@@ -59,4 +59,25 @@ final class HttpServerTests: XCTestCase {
         XCTAssertFalse(server.isRunning)
         XCTAssertThrowsError(try SvcSocket(port: port).readHead())
     }
+
+    /// A server closed right after it started, before its accept thread got going, must not
+    /// later accept on the same descriptor number once a new server reuses it: that thread
+    /// would take the new server's connection and drop it (a restart on a new token did).
+    func testARestartedServerAnswersItsFirstRequest() throws {
+        let port = server.port
+        server.close()
+        for round in 0..<200 {
+            let old = HttpServer(port: port, loopbackOnly: true, name: "http-old")
+            try old.start { ex in try ex.send(200, "text/plain", Data("old".utf8)) }
+            old.close()
+            let new = HttpServer(port: port, loopbackOnly: true, name: "http-new")
+            try new.start { ex in try ex.send(200, "text/plain", Data("new".utf8)) }
+            defer { new.close() }
+            let socket = try SvcSocket(port: port)
+            try socket.send(Array("GET /x HTTP/1.1\r\nHost: x\r\n\r\n".utf8))
+            let head = try? socket.readHead()
+            XCTAssertEqual(200, head?.0, "round \(round): the first request after a restart was dropped")
+            if head == nil { return }
+        }
+    }
 }
