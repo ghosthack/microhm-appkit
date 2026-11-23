@@ -29,6 +29,12 @@ public final class HttpServer: @unchecked Sendable {
     private var running = false
     private var connections: Set<Int32> = []
     private var activeThreads = 0
+    /// The write end of the pipe that wakes the accept thread, and whether that thread still
+    /// runs. The thread closes the listening socket itself, on its way out: closed under it,
+    /// the number could go to the next server's socket before the thread reached `accept`,
+    /// and it would then take (and drop) that server's connections.
+    private var wakeFd: Int32 = -1
+    private var acceptorAlive = false
 
     /// - port: 0 picks a free one (see `port`)
     /// - loopbackOnly: bind 127.0.0.1 (the MCP server) rather than every interface (the
@@ -53,12 +59,24 @@ public final class HttpServer: @unchecked Sendable {
     /// Binds and starts accepting; throws when the port is taken.
     public func start(_ handler: @escaping Handler) throws {
         let (fd, port) = try bind()
+        var pipeFds: [Int32] = [-1, -1]
+        if pipe(&pipeFds) != 0 {
+            let error = HttpError("cannot open a pipe: \(String(cString: strerror(errno)))")
+            Darwin.close(fd)
+            throw error
+        }
+        for p in pipeFds { _ = fcntl(p, F_SETFD, FD_CLOEXEC) }
+        // readiness comes from poll; a connection gone before accept must not block it
+        _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         lock.lock()
         listenFd = fd
         boundPort = port
         running = true
+        wakeFd = pipeFds[1]
+        acceptorAlive = true
         lock.unlock()
-        let acceptor = Thread { [self] in acceptLoop(fd, handler) }
+        let wake = pipeFds[0]
+        let acceptor = Thread { [self] in acceptLoop(fd, wake, handler) }
         acceptor.name = "\(name)-accept"
         acceptor.start()
     }
@@ -67,7 +85,8 @@ public final class HttpServer: @unchecked Sendable {
     /// to `wait` seconds to end.
     public func close(wait: TimeInterval = 1) {
         lock.lock()
-        let fd = listenFd
+        let wake = wakeFd
+        wakeFd = -1
         listenFd = -1
         running = false
         // Under the lock: a connection's thread closes its fd under this lock too (and
@@ -76,10 +95,19 @@ public final class HttpServer: @unchecked Sendable {
             shutdown(c, SHUT_RDWR)
         }
         lock.unlock()
-        if fd >= 0 {
-            shutdown(fd, SHUT_RDWR)
-            Darwin.close(fd)
+        if wake >= 0 {
+            var byte: UInt8 = 1
+            _ = Darwin.write(wake, &byte, 1)
+            Darwin.close(wake)
         }
+        // the accept thread closes the listening socket as it ends: until then the port is
+        // still bound, and a restart on it would fail
+        let acceptorDeadline = Date().addingTimeInterval(2)
+        lock.lock()
+        while acceptorAlive && Date() < acceptorDeadline {
+            _ = lock.wait(until: acceptorDeadline)
+        }
+        lock.unlock()
         let deadline = Date().addingTimeInterval(wait)
         lock.lock()
         while activeThreads > 0 && Date() < deadline {
@@ -161,17 +189,29 @@ public final class HttpServer: @unchecked Sendable {
         return (fd, Int(port))
     }
 
-    private func acceptLoop(_ fd: Int32, _ handler: @escaping Handler) {
+    private func acceptLoop(_ fd: Int32, _ wake: Int32, _ handler: @escaping Handler) {
+        defer {
+            Darwin.close(fd)
+            Darwin.close(wake)
+            lock.lock()
+            acceptorAlive = false
+            lock.broadcast()
+            lock.unlock()
+        }
         while true {
+            var fds = [pollfd(fd: fd, events: Int16(POLLIN), revents: 0),
+                       pollfd(fd: wake, events: Int16(POLLIN), revents: 0)]
+            if poll(&fds, 2, -1) < 0 {
+                if errno == EINTR { continue }
+                return
+            }
+            if fds[1].revents != 0 || !isRunning {
+                return
+            }
             let client = accept(fd, nil, nil)
             if client < 0 {
                 let error = errno
-                // Closed under us (ECONNABORTED/EBADF): stop, rather than go on accepting on
-                // a descriptor number that may already belong to something else.
-                if !isRunning {
-                    return
-                }
-                if error == EINTR || error == ECONNABORTED {
+                if error == EINTR || error == ECONNABORTED || error == EAGAIN || error == EWOULDBLOCK {
                     continue
                 }
                 if error == EMFILE {
@@ -180,6 +220,8 @@ public final class HttpServer: @unchecked Sendable {
                 }
                 return
             }
+            // BSD hands the listening socket's O_NONBLOCK on to the connection
+            _ = fcntl(client, F_SETFL, fcntl(client, F_GETFL) & ~O_NONBLOCK)
             var on: Int32 = 1
             setsockopt(client, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
             setsockopt(client, IPPROTO_TCP, TCP_NODELAY, &on, socklen_t(MemoryLayout<Int32>.size))
