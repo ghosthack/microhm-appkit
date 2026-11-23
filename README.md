@@ -22,7 +22,18 @@ scripts/page-tests.sh                # the phone page script's unit tests
 scripts/phone-e2e.sh                 # the phone page's Playwright suite against the Swift server
 ```
 
-`SIGN_IDENTITY="Developer ID Application: …" scripts/build-app.sh` signs for distribution.
+`SIGN_IDENTITY="Developer ID Application: …" scripts/build-app.sh` signs for distribution
+(hardened runtime, secure timestamp). `scripts/package.sh X.Y.Z` puts the app in
+`dist/release/Microhm-X.Y.Z-macos-arm64.dmg`.
+
+## Releases
+
+Pushing a `vX.Y.Z` tag runs [the release workflow](.github/workflows/release.yml). It runs
+every test, builds the DMG and publishes it as a GitHub Release with SHA-256 checksums.
+Running it by hand with `publish` off is a dry run. Without signing secrets, the app inside
+is ad hoc signed, so macOS asks before opening it. With the `MACOS_*` secrets in the
+`release` environment (the same names the Java repo uses), it is signed with a Developer ID
+and notarized.
 
 The bundle holds three executables in `Contents/MacOS`:
 - `Microhm` is the app.
