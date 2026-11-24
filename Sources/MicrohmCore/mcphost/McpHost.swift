@@ -374,12 +374,16 @@ extension HostLauncher {
     public static func openApp() {
         let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
         let bundle = exe.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let state = command([], RegistryPaths.resolve(), ServerHome.resolve())
         let process = Process()
         if bundle.pathExtension == "app" {
             process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            process.arguments = [bundle.path]
+            // Launch Services sees this host under the same bundle ID as the app.
+            // Require a new process so Open reaches the app executable.
+            process.arguments = ["-n", bundle.path, "--args"] + state
         } else if let app = MicrohmPaths.siblingExecutable("Microhm") {
             process.executableURL = app
+            process.arguments = state
         } else {
             Log.warn("could not open the app: no Microhm beside \(exe.path)", tag: "host")
             return
