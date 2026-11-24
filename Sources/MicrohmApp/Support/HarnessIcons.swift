@@ -1,31 +1,13 @@
 import AppKit
 import MicrohmCore
 
-/// The app's resources, found without `Bundle.module`: SwiftPM's generated accessor
-/// traps when its bundle is not where it expects, and the .app built by
-/// `scripts/build-app.sh` keeps resource bundles in Contents/Resources. A missing
+/// The app's resources, found without `Bundle.module` (see `ResourceBundles`). A missing
 /// resource here only ever means a missing icon.
 enum AppResources {
     static let bundleName = "Microhm_MicrohmApp.bundle"
 
-    static let bundle: Bundle? = {
-        let exe = Bundle.main.executableURL?.resolvingSymlinksInPath().deletingLastPathComponent()
-        let candidates = [
-            Bundle.main.resourceURL?.appendingPathComponent(bundleName),
-            Bundle.main.bundleURL.appendingPathComponent(bundleName),
-            exe?.appendingPathComponent(bundleName),
-            exe?.deletingLastPathComponent().appendingPathComponent("Resources").appendingPathComponent(bundleName),
-        ].compactMap { $0 }
-        for url in candidates where FileManager.default.fileExists(atPath: url.path) {
-            if let bundle = Bundle(url: url) { return bundle }
-        }
-        return nil
-    }()
-
     static func url(_ relativePath: String) -> URL? {
-        guard let base = bundle?.resourceURL ?? bundle?.bundleURL else { return nil }
-        let url = base.appendingPathComponent(relativePath)
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        ResourceBundles.url(bundleName, relativePath)
     }
 
     static let appIcon: NSImage? = url("app-icon.png").flatMap { NSImage(contentsOf: $0) }

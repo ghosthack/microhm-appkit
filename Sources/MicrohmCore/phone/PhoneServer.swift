@@ -658,9 +658,10 @@ public final class PhoneServer: @unchecked Sendable {
         return try? Data(contentsOf: file)
     }
 
-    /// The page as built into this module (`Resources/web`).
+    /// The page as built into this module (`Resources/web`). Not `Bundle.module`, which
+    /// traps in the installed app (see `ResourceBundles`).
     static func bundledWebDir() -> URL? {
-        Bundle.module.url(forResource: "web", withExtension: nil)
+        ResourceBundles.url("Microhm_MicrohmCore.bundle", "web")
     }
 
     /// Keeps the request body as a file and answers its absolute path, for the page to put

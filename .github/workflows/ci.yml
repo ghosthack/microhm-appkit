@@ -45,3 +45,5 @@ jobs:
         run: scripts/phone-e2e.sh
       - name: Build the app and the DMG
         run: scripts/package.sh 1.0.0
+      - name: Serve the phone page from the built app, without the build folder
+        run: scripts/smoke-app.sh
