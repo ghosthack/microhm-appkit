@@ -133,6 +133,9 @@ jobs:
           SIGN_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
         run: scripts/package.sh "$RELEASE_VERSION"
 
+      - name: Serve the phone page from the built app, without the build folder
+        run: scripts/smoke-app.sh
+
       - name: Notarize and staple the DMG
         shell: bash
         env:

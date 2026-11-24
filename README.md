@@ -20,6 +20,7 @@ open dist/Microhm.app
 swift test                           # 803 tests
 scripts/page-tests.sh                # the phone page script's unit tests
 scripts/phone-e2e.sh                 # the phone page's Playwright suite against the Swift server
+scripts/smoke-app.sh                 # the built app serves its phone page with no build folder around
 ```
 
 `SIGN_IDENTITY="Developer ID Application: …" scripts/build-app.sh` signs for distribution
