@@ -7,6 +7,7 @@ import MicrohmShared
 // ~/.micro-harness-manager-swift); logs go to its app.log.
 
 StartupTimes.markMain()
+McpHost.applyStateOptions(Array(CommandLine.arguments.dropFirst()))
 _ = try? MicrohmPaths.ensureDirectory(MicrohmPaths.home)
 Log.shared.open(MicrohmPaths.appLog)
 
