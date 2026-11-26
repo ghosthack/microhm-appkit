@@ -25,6 +25,15 @@ final class AppSettingsTests: XCTestCase {
         try writeString(dir.appendingPathComponent("settings.properties"), content)
     }
 
+    func testToolbarLabelsAreOffUnlessTurnedOn() throws {
+        try settings("")
+        XCTAssertFalse(AppSettings.toolbarLabels())
+        try settings("toolbar.labels=on\n")
+        XCTAssertTrue(AppSettings.toolbarLabels())
+        try settings("toolbar.labels=yes\n")
+        XCTAssertFalse(AppSettings.toolbarLabels())
+    }
+
     func testConcurrentSavesOfDifferentKeysNeitherLoseAChangeNorLeaveTempFiles() throws {
         for round in 0..<50 {
             try settings("")

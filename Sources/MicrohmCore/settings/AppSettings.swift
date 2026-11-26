@@ -157,10 +157,10 @@ public enum AppSettings {
     }
 
     /// Whether toolbar buttons carry a text label next to their glyph:
-    /// `toolbar.labels=on|off`. On (unset, or anything but `off` — the default): labeled;
-    /// off: icon-only, tooltips still name every action.
+    /// `toolbar.labels=on|off`. Off (unset, or anything but `on` — the default): icon-only,
+    /// tooltips still name every action; on: labeled.
     public static func toolbarLabels() -> Bool {
-        !isExactly("toolbar.labels", "off")
+        isExactly("toolbar.labels", "on")
     }
 
     /// Persists the label choice — written explicitly both ways, so the file documents it.
