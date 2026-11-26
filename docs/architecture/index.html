@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Microhm Architecture</title>
+<style>
+:root {
+  --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #8a8a90;
+  --border: #dcdad5; --accent: #2f6fde; --accent-soft: #e6eefc;
+  --app: #e9f1ff; --app-b: #8fb0e8; --host: #f1ecfb; --host-b: #b29ce0;
+  --mux: #e8f6ee; --mux-b: #86c4a0; --disk: #fbf3e4; --disk-b: #d9b672;
+  --ext: #f3f3f1; --ext-b: #b9b8b3; --code: #efeeea;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16171a; --panel: #1e1f23; --ink: #ececef; --muted: #9a9aa2; --line: #8d8d96;
+    --border: #33343a; --accent: #7aa7ff; --accent-soft: #1f2a40;
+    --app: #1b2638; --app-b: #45679e; --host: #251f35; --host-b: #6d5a9e;
+    --mux: #17291f; --mux-b: #3f7a57; --disk: #2b2416; --disk-b: #8a6f36;
+    --ext: #222327; --ext-b: #4a4b52; --code: #26272c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #16171a; --panel: #1e1f23; --ink: #ececef; --muted: #9a9aa2; --line: #8d8d96;
+  --border: #33343a; --accent: #7aa7ff; --accent-soft: #1f2a40;
+  --app: #1b2638; --app-b: #45679e; --host: #251f35; --host-b: #6d5a9e;
+  --mux: #17291f; --mux-b: #3f7a57; --disk: #2b2416; --disk-b: #8a6f36;
+  --ext: #222327; --ext-b: #4a4b52; --code: #26272c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+}
+main { max-width: 1180px; margin: 0 auto; padding: 40px 16px 80px; }
+h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 20px; margin: 48px 0 12px; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+p { margin: 0 0 12px; }
+.lede { color: var(--muted); max-width: 760px; }
+code { font: 12.5px ui-monospace, "SF Mono", Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.diagram { overflow-x: auto; padding: 8px; }
+.diagram svg { display: block; width: 100%; min-width: 880px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 4px 0; font-size: 13px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--b); background: var(--f); }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.grid .card p { font-size: 14px; color: var(--muted); margin: 0; }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; margin-bottom: 6px; }
+ol.flow { margin: 0; padding-left: 20px; font-size: 14px; }
+ol.flow li { margin-bottom: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.table-wrap { overflow-x: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips code { font-size: 12px; }
+.st { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.st.on { color: var(--mux-b); background: var(--mux); }
+.st.off { color: var(--muted); background: var(--code); }
+.st.host { color: var(--host-b); background: var(--host); }
+.note { font-size: 13px; color: var(--muted); margin: 10px 2px 0; }
+footer { margin-top: 56px; color: var(--muted); font-size: 13px; }
+
+/* SVG */
+svg text { fill: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+svg .t { font-size: 13px; font-weight: 600; }
+svg .s { font-size: 11px; fill: var(--muted); }
+svg .m { font-size: 10.5px; font-family: ui-monospace, "SF Mono", Menlo, monospace; fill: var(--muted); }
+svg .h { font-size: 12px; font-weight: 700; letter-spacing: .05em; }
+svg .lbl { font-size: 10.5px; fill: var(--muted); }
+svg .box { fill: var(--panel); stroke: var(--border); }
+svg .app { fill: var(--app); stroke: var(--app-b); }
+svg .host { fill: var(--host); stroke: var(--host-b); }
+svg .mux { fill: var(--mux); stroke: var(--mux-b); }
+svg .disk { fill: var(--disk); stroke: var(--disk-b); }
+svg .ext { fill: var(--ext); stroke: var(--ext-b); }
+svg .stack { fill: none; stroke: var(--app-b); stroke-dasharray: 4 3; }
+svg .arrow { fill: none; stroke: var(--line); stroke-width: 1.4; marker-end: url(#ah); }
+svg .arrow2 { fill: none; stroke: var(--line); stroke-width: 1.4; marker-end: url(#ah); marker-start: url(#ah); }
+svg .dash { stroke-dasharray: 5 4; }
+svg .head { fill: var(--line); }
+svg .pill { fill: var(--bg); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Microhm architecture</h1>
+  <p class="lede">The native macOS (Swift/AppKit) port of micro-harness-manager. Agent and shell sessions run in a
+  background daemon that outlives the app. The app or the headless host drives them over a Unix socket and
+  exposes them to agents through MCP and to phones through a LAN web page.</p>
+
+  <h2>System overview</h2>
+  <div class="card diagram">
+  <svg viewBox="0 0 1120 724" role="img" aria-label="Process and component diagram">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="head" d="M0,0 L10,5 L0,10 z"/>
+      </marker>
+    </defs>
+
+    <!-- ===== External clients ===== -->
+    <rect class="ext" x="40" y="20" width="254" height="64" rx="10"/>
+    <text class="t" x="56" y="45">Agents in sessions</text>
+    <text class="s" x="56" y="64">MCP clients · bearer token per session</text>
+
+    <rect class="ext" x="314" y="20" width="230" height="64" rx="10"/>
+    <text class="t" x="330" y="45">Phone browser (LAN)</text>
+    <text class="s" x="330" y="64">PWA · token login → cookie</text>
+
+    <rect class="ext" x="850" y="20" width="230" height="64" rx="10"/>
+    <text class="t" x="866" y="45">microhm-mux CLI</text>
+    <text class="s" x="866" y="64">Swift or Java client</text>
+
+    <!-- ===== App process ===== -->
+    <rect class="app" x="40" y="124" width="560" height="316" rx="14"/>
+    <text class="h" x="58" y="148">MICROHM.APP</text>
+
+    <rect class="stack" x="56" y="160" width="430" height="174" rx="10"/>
+    <text class="s" x="72" y="326">McpStack (MicrohmCore) · the host builds the same stack</text>
+
+    <rect class="box" x="72" y="172" width="190" height="56" rx="8"/>
+    <text class="t" x="84" y="194">McpService</text>
+    <text class="m" x="84" y="212">127.0.0.1:7402 · loopback</text>
+
+    <rect class="box" x="278" y="172" width="190" height="56" rx="8"/>
+    <text class="t" x="290" y="194">PhoneService</text>
+    <text class="m" x="290" y="212">0.0.0.0:7403 · token</text>
+
+    <rect class="box" x="72" y="240" width="190" height="68" rx="8"/>
+    <text class="t" x="84" y="261">SessionController</text>
+    <text class="s" x="84" y="278">list · read · send · keys</text>
+    <text class="s" x="84" y="294">notify · spawn · kill</text>
+
+    <rect class="box" x="278" y="240" width="190" height="68" rx="8"/>
+    <text class="t" x="290" y="261">SessionLauncher</text>
+    <text class="s" x="290" y="278">HarnessPlugins → command</text>
+    <text class="s" x="290" y="294">injects MCP URL + token</text>
+
+    <rect class="box" x="56" y="348" width="136" height="76" rx="8"/>
+    <text class="t" x="68" y="369">MicrohmApp UI</text>
+    <text class="s" x="68" y="386">Window · Sidebar</text>
+    <text class="s" x="68" y="401">Dialogs · Settings</text>
+    <text class="s" x="68" y="416">Usage budgets</text>
+
+    <rect class="box" x="202" y="348" width="136" height="76" rx="8"/>
+    <text class="t" x="214" y="369">StatusPoller</text>
+    <text class="s" x="214" y="386">StateDetector each</text>
+    <text class="s" x="214" y="401">→ sidebar badges</text>
+    <text class="s" x="214" y="416">→ menu-bar icon</text>
+
+    <rect class="box" x="348" y="348" width="138" height="76" rx="8"/>
+    <text class="t" x="360" y="369">MicrohmTerminal</text>
+    <text class="s" x="360" y="386">TerminalView</text>
+    <text class="s" x="360" y="401">key · mouse · paste</text>
+    <text class="s" x="360" y="416">MicrohmVT emulator</text>
+
+    <!-- the one mux client every app component goes through -->
+    <rect class="box" x="512" y="160" width="72" height="264" rx="8"/>
+    <text class="t" text-anchor="middle" transform="translate(546,292) rotate(-90)">SessionServerHost</text>
+    <text class="s" text-anchor="middle" transform="translate(564,292) rotate(-90)">mux client · spawns daemon</text>
+
+    <!-- ===== Host process ===== -->
+    <rect class="host" x="40" y="476" width="560" height="96" rx="14"/>
+    <text class="h" x="58" y="500">MICROHM-HOST · headless background host</text>
+    <text class="s" x="58" y="520">Started as the app quits while sessions are live. Waits for instance.lock, then serves the</text>
+    <text class="s" x="58" y="536">same McpStack on the same ports and tokens. Exits when no session is live or the app returns.</text>
+    <text class="m" x="58" y="557">--mcp-host · --phone-only · --registry= · --home= · --mux-home=</text>
+
+    <!-- ===== Daemon ===== -->
+    <rect class="mux" x="680" y="124" width="400" height="448" rx="14"/>
+    <text class="h" x="698" y="148">MICROHM-MUX SERVE · daemon</text>
+
+    <rect class="box" x="696" y="162" width="356" height="52" rx="8"/>
+    <text class="t" x="708" y="183">SessionServer</text>
+    <text class="m" x="708" y="201">server.sock · server.lock · idle exit</text>
+
+    <rect class="box" x="696" y="226" width="356" height="70" rx="8"/>
+    <text class="t" x="708" y="247">ClientConnection → RequestDispatcher</text>
+    <text class="m" x="708" y="265">ping list has new kill send-keys capture</text>
+    <text class="m" x="708" y="281">label input wait watch current-path attach</text>
+
+    <rect class="box" x="696" y="308" width="356" height="44" rx="8"/>
+    <text class="t" x="708" y="335">SessionManager</text>
+    <text class="s" x="830" y="335">+ WatchStream (activity events)</text>
+
+    <rect class="box" x="708" y="378" width="356" height="90" rx="8"/>
+    <rect class="box" x="702" y="372" width="356" height="90" rx="8"/>
+    <rect class="box" x="696" y="366" width="356" height="90" rx="8"/>
+    <text class="t" x="708" y="388">PtySession × N</text>
+    <text class="s" x="708" y="406">PtyProcess · MicrohmPTY (forkpty, TIOCSCTTY)</text>
+    <text class="s" x="708" y="422">HeadlessTerminal · MicrohmVT screen buffer</text>
+    <text class="s" x="708" y="438">ForegroundProbe · CwdProbe · attached clients</text>
+
+    <text class="s" x="696" y="494">Wire protocol v1, byte-for-byte with the Java daemon</text>
+    <text class="m" x="696" y="512">frames: REQUEST RESPONSE DATA_OUT DATA_IN</text>
+    <text class="m" x="696" y="528">        RESIZE DETACH SESSION_EXITED</text>
+
+    <!-- ===== Disk ===== -->
+    <rect class="disk" x="40" y="612" width="560" height="92" rx="14"/>
+    <text class="h" x="58" y="636">STATE · ~/.micro-harness-manager-swift</text>
+    <text class="m" x="58" y="658">sessions.json   SessionRegistry (Java-compatible)</text>
+    <text class="m" x="58" y="674">instance.lock   one owner at a time: app or host</text>
+    <text class="m" x="58" y="690">settings · MCP configs · logs · mux/ (daemon home)</text>
+
+    <!-- ===== Child processes ===== -->
+    <rect class="ext" x="680" y="612" width="400" height="92" rx="14"/>
+    <text class="h" x="698" y="636">CHILD PROCESSES · one per PTY</text>
+    <text class="m" x="698" y="658">claude · codex · cursor-agent · grok</text>
+    <text class="m" x="698" y="674">opencode · pi · muse · $SHELL</text>
+    <text class="s" x="698" y="692">The agents in here are the MCP clients at the top</text>
+
+    <!-- ===== Connections ===== -->
+    <!-- agents → MCP -->
+    <path class="arrow" d="M200,84 L200,170"/>
+    <text class="lbl" x="208" y="108">MCP over HTTP</text>
+    <!-- phone → phone server -->
+    <path class="arrow" d="M373,84 L373,170"/>
+    <text class="lbl" x="381" y="108">/api/* · SSE stream</text>
+    <!-- CLI → daemon socket -->
+    <path class="arrow" d="M1000,84 L1000,160"/>
+    <text class="lbl" x="992" y="108" text-anchor="end">Unix socket</text>
+
+    <!-- app internals → mux client -->
+    <path class="arrow" d="M486,247 L510,247"/>
+    <path class="arrow" d="M486,386 L510,386"/>
+
+    <!-- mux client → daemon -->
+    <path class="arrow2" d="M584,247 L694,247"/>
+    <text class="lbl" x="632" y="226" text-anchor="middle">mux v1</text>
+    <text class="lbl" x="632" y="240" text-anchor="middle">requests</text>
+    <path class="arrow2" d="M584,386 L694,386"/>
+    <text class="lbl" x="632" y="365" text-anchor="middle">attach</text>
+    <text class="lbl" x="632" y="379" text-anchor="middle">byte stream</text>
+
+    <!-- host → daemon -->
+    <path class="arrow2" d="M600,524 L678,524"/>
+    <text class="lbl" x="639" y="517" text-anchor="middle">mux v1</text>
+
+    <!-- app ⇄ host hand-off -->
+    <path class="arrow2 dash" d="M300,440 L300,474"/>
+    <text class="lbl" x="310" y="461">hand-off via instance.lock</text>
+
+    <!-- host → disk -->
+    <path class="arrow2" d="M300,572 L300,610"/>
+    <text class="lbl" x="310" y="595">registry + lock (whichever owns it)</text>
+
+    <!-- daemon → children -->
+    <path class="arrow" d="M1040,468 L1040,610"/>
+    <text class="lbl" x="1032" y="595" text-anchor="end">forkpty · pty I/O</text>
+  </svg>
+  <div class="legend">
+    <span style="--f:var(--app);--b:var(--app-b)">App process</span>
+    <span style="--f:var(--host);--b:var(--host-b)">Background host</span>
+    <span style="--f:var(--mux);--b:var(--mux-b)">Session daemon</span>
+    <span style="--f:var(--disk);--b:var(--disk-b)">On-disk state</span>
+    <span style="--f:var(--ext);--b:var(--ext-b)">External / child processes</span>
+  </div>
+  </div>
+
+  <h2>Executables</h2>
+  <div class="grid">
+    <div class="card"><span class="tag">Contents/MacOS/Microhm</span><h3>The app</h3>
+      <p>AppKit window with the session sidebar, terminal view, dialogs, settings and usage budgets. It owns the registry
+      lock while open and runs MCP and the phone page in-process.</p></div>
+    <div class="card"><span class="tag">Contents/MacOS/microhm-mux</span><h3>Daemon + CLI</h3>
+      <p>One binary. <code>microhm-mux serve</code> is the long-lived PTY daemon, and the other subcommands are a CLI client. Sessions
+      survive app restarts because they live here.</p></div>
+    <div class="card"><span class="tag">Contents/MacOS/microhm-host</span><h3>Background host</h3>
+      <p>Keeps MCP, the phone page and the menu-bar icon running after the app quits, then hands them back when the app reopens. The
+      <code>--phone-only</code> mode serves just the phone page.</p></div>
+  </div>
+
+  <h2>Swift package targets</h2>
+  <div class="card table-wrap">
+    <table>
+      <tr><th>Target</th><th>Depends on</th><th>Responsibility</th></tr>
+      <tr><td><code>MicrohmShared</code></td><td>—</td><td><code>MicrohmPaths</code> (state dirs, ports), <code>Log</code>.</td></tr>
+      <tr><td><code>MicrohmVT</code></td><td>Shared</td><td>Terminal emulator core: <code>VtTokenizer</code>, <code>TerminalEmulator</code>, <code>ScreenBuffer</code>, <code>HeadlessTerminal</code>, <code>ScreenSerializer</code>.</td></tr>
+      <tr><td><code>MicrohmPTY</code></td><td>Shared</td><td>POSIX ptys: <code>forkpty</code>/<code>posix_spawn</code> + <code>TIOCSCTTY</code>.</td></tr>
+      <tr><td><code>MicrohmMux</code></td><td>Shared, VT, PTY</td><td>Daemon (server, sessions, dispatcher), client library, CLI, and wire protocol v1.</td></tr>
+      <tr><td><code>MicrohmCore</code></td><td>Shared, VT, Mux</td><td>Harness plugins, state detection, registry, settings, usage, status poller, <code>SessionController</code>, MCP server and host, phone server and web assets.</td></tr>
+      <tr><td><code>MicrohmTerminal</code></td><td>Shared, VT</td><td>AppKit <code>TerminalView</code> (Core Text/Core Graphics), encoders, box drawing, palettes, links, selection.</td></tr>
+      <tr><td><code>MicrohmStatusItem</code></td><td>—</td><td>Menu-bar icon.</td></tr>
+      <tr><td><code>MicrohmApp</code> (exe)</td><td>Core, Terminal, StatusItem</td><td>The app's UI: main window, toolbar, sidebar, dialogs, settings.</td></tr>
+      <tr><td><code>microhm-mux</code> (exe)</td><td>Mux</td><td>Daemon and CLI entry point.</td></tr>
+      <tr><td><code>microhm-host</code> (exe)</td><td>Core, StatusItem</td><td>Headless MCP and phone host.</td></tr>
+    </table>
+  </div>
+
+  <h2>Key flows</h2>
+  <div class="grid">
+    <div class="card"><span class="tag">Launch</span><h3>Starting a session</h3>
+      <ol class="flow">
+        <li>A user (New Session sheet), an agent (<code>spawn</code>) or the phone page asks for a harness in a project directory.</li>
+        <li><code>SessionLauncher</code> asks the harness plugin for its command and adds the MCP URL. The token goes in the environment or an owner-only config file, never on the command line.</li>
+        <li><code>SessionServerHost.newSession</code> sends <code>new</code> over the socket and starts the daemon first if it isn't running.</li>
+        <li>The daemon forks a PTY and feeds its output into a <code>HeadlessTerminal</code>. The registry records the entry in <code>sessions.json</code>.</li>
+      </ol></div>
+    <div class="card"><span class="tag">Status</span><h3>State detection</h3>
+      <ol class="flow">
+        <li><code>SessionStatusPoller</code> captures each live session on a background queue, one capture in flight per session.</li>
+        <li>A per-session <code>StateDetector</code> checks screen quiescence first (5 s short, 20 s long).</li>
+        <li>The harness plugin's text patterns then refine the result to <code>WORKING</code>, <code>WAITING_FOR_INPUT</code> or <code>IDLE</code>.</li>
+        <li>Results land on the main queue and update the sidebar badges.</li>
+      </ol></div>
+    <div class="card"><span class="tag">MCP</span><h3>Agents driving agents</h3>
+      <ol class="flow">
+        <li>An agent calls a tool on <code>127.0.0.1:7402</code> using its session's token.</li>
+        <li><code>SessionController</code> turns it into daemon <code>input</code>, <code>capture</code> or <code>wait</code> calls and masks harness chrome with <code>ScreenMask</code>.</li>
+        <li><code>read</code> is incremental per caller and session, computed with <code>ScreenDiff</code>.</li>
+        <li><code>notify</code> registers a one-shot wait. A monitor re-checks it on the daemon's <code>watch</code> event stream.</li>
+      </ol></div>
+    <div class="card"><span class="tag">Hand-off</span><h3>App quits, sessions keep running</h3>
+      <ol class="flow">
+        <li>As the app quits, <code>HostLauncher</code> starts <code>microhm-host</code> if any registered session is live.</li>
+        <li>The host waits up to 30 s for <code>instance.lock</code>, then serves the same ports and tokens.</li>
+        <li>When the app relaunches, it stops the host through <code>HostOwner</code> and takes the lock back.</li>
+        <li>Incremental read state and pending <code>notify</code> waits don't survive the hand-off.</li>
+      </ol></div>
+    <div class="card"><span class="tag">Phone</span><h3>Phone page</h3>
+      <ol class="flow">
+        <li><code>PhoneServer</code> listens on every interface on <code>:7403</code> and serves <code>Resources/web</code> unchanged.</li>
+        <li>The user logs in once with <code>POST /api/login</code> and the token; a cookie carries it after that.</li>
+        <li><code>/api/sessions</code>, <code>screen</code> and <code>stream</code> (SSE) read state. <code>send</code>, <code>keys</code>, <code>spawn</code>, <code>resume</code>, <code>close</code> and <code>upload</code> act.</li>
+        <li>The Settings window shows a QR code for pairing.</li>
+      </ol></div>
+    <div class="card"><span class="tag">Interop</span><h3>Java compatibility</h3>
+      <ol class="flow">
+        <li>The mux protocol is wire-identical to the Java daemon, so either CLI drives either daemon.</li>
+        <li><code>sessions.json</code> keeps the Java format, and unknown fields and entries are preserved on save.</li>
+        <li>The phone page and its tests are copies from upstream, pinned in <code>Shared/shared.lock</code>.</li>
+        <li>Separate state directory and ports (7402/7403 vs Java 7392/7393) let the two run side by side.</li>
+      </ol></div>
+  </div>
+
+  <h2>Lifecycle: closing or quitting the app</h2>
+  <p class="lede">Closing the last window quits the app (<code>applicationShouldTerminateAfterLastWindowClosed</code> returns
+  <code>true</code>). Quitting ends only the app process. Sessions live in the daemon and keep running.</p>
+  <div class="card table-wrap">
+    <table>
+      <tr><th>Part</th><th>App open</th><th>After quit</th><th>On relaunch</th></tr>
+      <tr><td>Terminal views</td><td><span class="st on">attached</span></td>
+        <td><span class="st off">detached</span> Attach streams close and sessions are untouched.</td><td>Reattach to the same sessions.</td></tr>
+      <tr><td>Status poller, UI timers, menu-bar icon</td><td><span class="st on">running</span></td>
+        <td><span class="st off">stopped</span></td><td>Restart.</td></tr>
+      <tr><td>MCP server <code>:7402</code><br>Phone page <code>:7403</code></td><td><span class="st on">in the app</span></td>
+        <td><span class="st host">in microhm-host</span> if a session is live and MCP, the phone page or the menu-bar icon is on.<br>
+        <span class="st off">closed</span> otherwise.</td><td>The app stops the host and serves them again.</td></tr>
+      <tr><td><code>instance.lock</code></td><td><span class="st on">held by the app</span></td>
+        <td>Released as the last step of quitting. The host takes it if it was started.</td><td>The app takes it back.</td></tr>
+      <tr><td><code>microhm-mux</code> daemon and PTY sessions</td><td><span class="st on">running</span></td>
+        <td><span class="st on">running</span> Never sent <code>shutdown</code>.</td><td>Unchanged.</td></tr>
+      <tr><td><code>sessions.json</code></td><td><span class="st on">on disk</span></td><td><span class="st on">on disk</span></td><td>Reloaded.</td></tr>
+    </table>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card"><span class="tag">Quit sequence</span><h3><code>applicationWillTerminate</code></h3>
+      <ol class="flow">
+        <li>Stop the status timer, detach every terminal and remove the menu-bar icon.</li>
+        <li>Stop the MCP and phone servers in <code>CoreBackend.shutdown</code>.</li>
+        <li>Start <code>microhm-host</code> through <code>HostLauncher.launchIfNeeded</code> if it's needed.</li>
+        <li>Wait at most 3 s for steps 2 and 3, so a stuck daemon can't hang the quit.</li>
+        <li>Release <code>instance.lock</code>.</li>
+      </ol></div>
+    <div class="card"><span class="tag">Daemon exit</span><h3>When sessions actually stop</h3>
+      <ol class="flow">
+        <li>The app never shuts the daemon down.</li>
+        <li>The daemon exits on its own when its last session ends, unless it was started with <code>--keep-alive</code>.</li>
+        <li>It also stops on <code>microhm-mux shutdown</code>, which kills every session.</li>
+        <li>The host exits once no registered session is live or when the app reopens.</li>
+      </ol></div>
+    <div class="card"><span class="tag">Hand-off cost</span><h3>What agents lose</h3>
+      <ol class="flow">
+        <li>Incremental <code>read</code> state: the next read returns the whole screen.</li>
+        <li>Pending <code>notify</code> waits end.</li>
+        <li>Ports, tokens and per-session MCP configs stay the same, so agents don't need to reconfigure.</li>
+      </ol></div>
+  </div>
+
+  <h2>Ports, paths and vocabulary</h2>
+  <div class="card table-wrap">
+    <table>
+      <tr><th>What</th><th>Swift</th><th>Java</th><th>Notes</th></tr>
+      <tr><td>State directory</td><td><code>~/.micro-harness-manager-swift</code></td><td><code>~/.micro-harness-manager</code></td><td>Override with <code>MICROHM_HOME</code></td></tr>
+      <tr><td>Daemon home</td><td><code>…/mux</code></td><td><code>…/mux</code></td><td><code>MICROHM_MUX_HOME</code>. The socket path must stay under 104 bytes.</td></tr>
+      <tr><td>MCP server</td><td><code>7402</code></td><td><code>7392</code></td><td>Loopback only</td></tr>
+      <tr><td>Phone page</td><td><code>7403</code></td><td><code>7393</code></td><td>All interfaces, token-gated</td></tr>
+    </table>
+  </div>
+  <div class="grid" style="margin-top:14px">
+    <div class="card"><h3>MCP tools</h3><div class="chips">
+      <code>list</code><code>read</code><code>send</code><code>keys</code><code>notify</code><code>spawn</code><code>kill</code></div></div>
+    <div class="card"><h3>Harness plugins</h3><div class="chips">
+      <code>claude-code</code><code>codex</code><code>cursor-agent</code><code>grok</code><code>opencode</code><code>pi</code><code>muse</code><code>shell</code></div></div>
+    <div class="card"><h3>Session states</h3><div class="chips">
+      <code>WORKING</code><code>WAITING_FOR_INPUT</code><code>IDLE</code></div></div>
+  </div>
+
+  <footer>Generated from the sources in this repo (<code>Package.swift</code>, <code>PORTING.md</code>, <code>Sources/</code>). See <code>PORTING.md</code> for porting conventions.</footer>
+</main>
+</body>
+</html>
