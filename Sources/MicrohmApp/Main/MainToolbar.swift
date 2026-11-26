@@ -25,6 +25,25 @@ final class MainToolbar: NSObject, NSToolbarDelegate {
         static let theme = NSToolbarItem.Identifier("microhm.theme")
     }
 
+    /// Related buttons share one capsule (as Finder's view buttons do): each group is an
+    /// `NSToolbarItemGroup` of the plain items above, which keep their own actions and
+    /// validation.
+    private enum Group {
+        static let create = NSToolbarItem.Identifier("microhm.group.create")
+        static let paging = NSToolbarItem.Identifier("microhm.group.paging")
+        static let stop = NSToolbarItem.Identifier("microhm.group.stop")
+        static let batch = NSToolbarItem.Identifier("microhm.group.batch")
+        static let app = NSToolbarItem.Identifier("microhm.group.app")
+
+        static let members: [NSToolbarItem.Identifier: (String, [NSToolbarItem.Identifier])] = [
+            create: ("Create", [Item.newSession, Item.newHere, Item.shellHere, Item.duplicate]),
+            paging: ("Scroll", [Item.pageUp, Item.pageDown]),
+            stop: ("Stop", [Item.detach, Item.close, Item.kill, Item.closeAll]),
+            batch: ("Batch", [Item.batchClose, Item.removeDead]),
+            app: ("App", [Item.usage, Item.settings, Item.theme]),
+        ]
+    }
+
     let toolbar: NSToolbar
     private weak var owner: MainWindowController?
     private var themeItem: NSToolbarItem?
@@ -53,18 +72,17 @@ final class MainToolbar: NSObject, NSToolbarDelegate {
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         guard let owner else { return [] }
-        var items: [NSToolbarItem.Identifier] = [.toggleSidebar, .sidebarTrackingSeparator,
-                                                  Item.newSession, Item.newHere, Item.shellHere, Item.duplicate]
+        var items: [NSToolbarItem.Identifier] = [.toggleSidebar, .sidebarTrackingSeparator, Group.create]
         if owner.toolbarPageButtons {
-            items += [.space, Item.pageUp, Item.pageDown]
+            items += [.space, Group.paging]
         }
         if owner.toolbarStopLadder {
-            items += [.space, Item.detach, Item.close, Item.kill, Item.closeAll]
+            items += [.space, Group.stop]
         }
         if owner.toolbarBatchActions {
-            items += [.space, Item.batchClose, Item.removeDead]
+            items += [.space, Group.batch]
         }
-        items += [.flexibleSpace, Item.usage, Item.settings, Item.theme]
+        items += [.flexibleSpace, Group.app]
         return items
     }
 
@@ -74,6 +92,14 @@ final class MainToolbar: NSObject, NSToolbarDelegate {
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier,
                  willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        if let (label, members) = Group.members[id] {
+            let group = NSToolbarItemGroup(itemIdentifier: id)
+            group.label = label
+            group.paletteLabel = label
+            group.subitems = members.compactMap { self.toolbar(toolbar, itemForItemIdentifier: $0,
+                                                               willBeInsertedIntoToolbar: flag) }
+            return group
+        }
         switch id {
         case Item.newSession:
             return item(id, "New…", "plus.rectangle.on.folder", "Start a new session… (⌘N)",

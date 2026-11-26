@@ -21,6 +21,16 @@ cp "$BIN/Microhm" "$BIN/microhm-mux" "$BIN/microhm-host" "$APP/Contents/MacOS/"
 for b in "$BIN"/*.bundle; do [ -e "$b" ] && cp -R "$b" "$APP/Contents/Resources/"; done
 cp Shared/Microhm.icns "$APP/Contents/Resources/Microhm.icns"
 
+# Record the SDK the binaries were really built against. SwiftPM links through clang with
+# --sysroot, which doesn't read the SDK's version, so the linker stamps the deployment
+# target (14.0) as the SDK too, and AppKit then gives the app the look of a macOS 14 app
+# (no Liquid Glass toolbar on 26+). Signing below covers the rewritten binaries.
+SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
+for exe in Microhm microhm-mux microhm-host; do
+  f="$APP/Contents/MacOS/$exe"
+  vtool -set-build-version macos 14.0 "$SDK_VERSION" -replace -output "$f" "$f"
+done
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
