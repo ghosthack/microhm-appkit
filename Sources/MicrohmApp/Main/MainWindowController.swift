@@ -95,6 +95,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, SidebarV
         window.title = AppModel.appName
         window.titleVisibility = .visible
         window.toolbarStyle = .unified
+        // No titlebar material: AppKit lays the content's titlebar section out a few points
+        // left of the split divider and paints it over the divider's top, so a material there
+        // shows as a jog at the sidebar edge and a separator that starts past the divider.
+        // Transparent, the full-height sidebar and the content's own fill run to the top and
+        // the divider runs the window's full height. Content still lays out below the
+        // toolbar (the safe area).
+        window.titlebarAppearsTransparent = true
         window.minSize = NSSize(width: 640, height: 400)
         window.setFrameAutosaveName("MicrohmMainWindow")
         window.tabbingMode = .disallowed
@@ -149,6 +156,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, SidebarV
         terminalArea.onNewSession = { [weak self] in self?.newSession(nil) }
         terminalArea.onResume = { [weak self] in self?.resumeSession(nil) }
 
+        // before the first item: the controller's view is this split view from then on
+        let splitView = SeamlessSplitView()
+        splitView.isVertical = true // the controller's own default; a bare NSSplitView stacks
+        splitView.dividerStyle = .thin
+        splitController.splitView = splitView
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebar)
         sidebarItem.minimumThickness = 200
         sidebarItem.maximumThickness = 460
@@ -157,7 +169,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, SidebarV
         sidebarItem.titlebarSeparatorStyle = .none
         self.sidebarItem = sidebarItem
         let contentItem = NSSplitViewItem(viewController: terminalArea)
-        contentItem.titlebarSeparatorStyle = .line
+        contentItem.titlebarSeparatorStyle = .none
         splitController.addSplitViewItem(sidebarItem)
         splitController.addSplitViewItem(contentItem)
         splitController.splitView.autosaveName = "MicrohmSplit"
@@ -506,11 +518,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, SidebarV
         }
     }
 
-    /// Window title: the selected session's name, its folder as the subtitle.
+    /// Window title: the selected session's name, its folder as the subtitle. With nothing
+    /// selected the title is empty rather than the app's name, which the menu bar already
+    /// shows. (`titleVisibility = .hidden` would also collapse the title's slot and make the
+    /// toolbar's leading items jump across the window on every selection change.)
     private func updateWindowTitle(_ entry: SidebarEntry?) {
         guard let window else { return }
         guard let entry else {
-            window.title = AppModel.appName
+            window.title = ""
             window.subtitle = ""
             return
         }
@@ -1509,4 +1524,14 @@ extension MainWindowController {
         item.representedObject = key
         sortBy(item)
     }
+}
+
+/// The split view between the sidebar and the content, without a divider line: the
+/// sidebar's own surface marks the edge, as Finder's does. The divider has no thickness
+/// (a transparent 1 pt one shows the window's background through it, a light hairline
+/// in the light appearance); AppKit's widened hit area around it still drags.
+final class SeamlessSplitView: NSSplitView {
+    override var dividerThickness: CGFloat { 0 }
+    override var dividerColor: NSColor { .clear }
+    override func drawDivider(in rect: NSRect) {}
 }
